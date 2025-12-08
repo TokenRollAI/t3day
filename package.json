@@ -1,0 +1,22 @@
+{
+  "name": "today-3d",
+  "version": "1.0.0",
+  "description": "The Daily Artefact - 每日一物 3D 纪念碑",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:migrate": "wrangler d1 migrations apply today-3d-db --local",
+    "db:migrate:prod": "wrangler d1 migrations apply today-3d-db --remote",
+    "generate": "wrangler dev --test-scheduled"
+  },
+  "dependencies": {
+    "hono": "^4.7.0",
+    "openai": "^4.80.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250124.0",
+    "wrangler": "^4.15.0",
+    "typescript": "^5.7.0"
+  }
+}

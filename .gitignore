@@ -1,0 +1,25 @@
+# 依赖
+node_modules/
+
+# Cloudflare
+.wrangler/
+.dev.vars
+
+# 构建产物
+dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 日志
+*.log
+
+# 下载的模型文件
+downloaded_models/

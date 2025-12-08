@@ -1,0 +1,24 @@
+name = "today-3d"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+assets = { directory = "./public", binding = "ASSETS", not_found_handling = "single-page-application" }
+
+# Cron Trigger - 每天 UTC 00:00 (北京时间 08:00)
+[triggers]
+crons = ["0 0 * * *"]
+
+# D1 数据库绑定
+[[d1_databases]]
+binding = "DB"
+database_name = "today-3d-db"
+database_id = "f7865445-11a1-4d9a-8043-ab010bce1e9b"
+
+# R2 存储桶绑定
+[[r2_buckets]]
+binding = "MODELS_BUCKET"
+bucket_name = "today-3d-models"
+
+# 环境变量 (敏感信息用 wrangler secret 设置)
+[vars]
+ENVIRONMENT = "development"
+OPENAI_BASE_URL = "https://aihubmix.com/v1"  # 可替换为兼容服务地址
