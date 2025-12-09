@@ -521,21 +521,35 @@
       }, 5000);
     });
 
-    // 灯光
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+    // 灯光 - 三点布光 + 顶部聚光灯
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.05);
     scene.add(ambientLight);
 
-    const mainLight = new THREE.DirectionalLight(0xffffff, 1.5);
-    mainLight.position.set(5, 5, 5);
-    scene.add(mainLight);
+    // 主光 (Key Light) - 右前方 45°，暖色
+    const keyLight = new THREE.DirectionalLight(0xffeedd, 2);
+    keyLight.position.set(4, 4, 4);
+    scene.add(keyLight);
 
-    const fillLight = new THREE.DirectionalLight(0x8888ff, 0.5);
-    fillLight.position.set(-5, 0, -5);
+    // 补光 (Fill Light) - 左前方，冷色
+    const fillLight = new THREE.DirectionalLight(0x8888ff, 2);
+    fillLight.position.set(-4, 2, 3);
     scene.add(fillLight);
 
-    const rimLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    rimLight.position.set(0, -5, 0);
+    // 轮廓光 (Rim Light) - 后方，勾勒边缘
+    const rimLight = new THREE.DirectionalLight(0xffffff, 4);
+    rimLight.position.set(0, 3, -5);
     scene.add(rimLight);
+
+    // 博物馆顶部聚光灯
+    const spotLight = new THREE.SpotLight(0xfff5e6, 2);
+    spotLight.position.set(0, 3, 0);
+    spotLight.target.position.set(0, 0, 0);
+    spotLight.angle = Math.PI / 6;  // 30°
+    spotLight.penumbra = 0.5;
+    spotLight.decay = 0;
+    spotLight.distance = 0;
+    scene.add(spotLight);
+    scene.add(spotLight.target);
 
     // 模型加载器
     const gltfLoader = new GLTFLoader();
@@ -555,6 +569,21 @@
             const maxDim = Math.max(size.x, size.y, size.z);
             const scale = 2 / maxDim;
             model.scale.setScalar(scale);
+
+            // 调整材质粗糙度和金属度
+            model.traverse((child) => {
+              if (child.isMesh && child.material) {
+                const materials = Array.isArray(child.material) ? child.material : [child.material];
+                materials.forEach((mat) => {
+                  if (mat.isMeshStandardMaterial || mat.isMeshPhysicalMaterial) {
+                    mat.roughness = 0.19;
+                    mat.metalness = 0.08;
+                    mat.needsUpdate = true;
+                  }
+                });
+              }
+            });
+
             resolve(model);
           },
           undefined,

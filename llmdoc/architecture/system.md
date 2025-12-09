@@ -153,13 +153,19 @@ public/index.html
     ├─ 1. Fetch Data: fetch('/api/today')
     ├─ 2. Load Model: GLTFLoader.load(data.model_url)
     ├─ 3. Setup Scene: Three.js Scene, PerspectiveCamera, WebGLRenderer
-    ├─ 4. Add Lights: AmbientLight, DirectionalLight (×3)
-    ├─ 5. Auto Rotate: OrbitControls.autoRotate (由用户交互中断)
-    ├─ 6. Display Text:
+    ├─ 4. Add Lights: 专业三点布光 + 顶部聚光灯
+    │    ├─ 环境光 (AmbientLight): 强度 0.05
+    │    ├─ 主光 (Key Light): 强度 2，位置 (4,4,4)，暖色 0xffeedd
+    │    ├─ 补光 (Fill Light): 强度 2，位置 (-4,2,3)，冷色 0x8888ff
+    │    ├─ 轮廓光 (Rim Light): 强度 4，位置 (0,3,-5)，白色 0xffffff
+    │    └─ 顶部聚光灯 (Spot Light): 强度 2，位置 (0,3,0)，角度 30°，暖色 0xfff5e6
+    ├─ 5. Material: roughness=0.19, metalness=0.08
+    ├─ 6. Auto Rotate: OrbitControls.autoRotate (由用户交互中断)
+    ├─ 7. Display Text:
     │    ├─ 日期格式化 (MMM DD)
     │    ├─ 坐标格式化 (N/S, E/W)
     │    └─ 描述打字机效果 (typeWriter 函数)
-    └─ 7. Render Loop: requestAnimationFrame
+    └─ 8. Render Loop: requestAnimationFrame
 ```
 
 ## 4. Data Models

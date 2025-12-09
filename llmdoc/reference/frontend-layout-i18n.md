@@ -58,6 +58,15 @@ Source: Interesting News Event
 **库**：Three.js + OrbitControls
 **特效**：自动旋转，支持鼠标拖拽停止
 
+**灯光系统**：专业三点布光 + 顶部聚光灯
+- 环境光 (AmbientLight): 强度 0.05，用于提供基础均匀照度
+- 主光 (Key Light/DirectionalLight): 强度 2，位置 (4,4,4)，暖色 0xffeedd，主要照亮模型
+- 补光 (Fill Light/DirectionalLight): 强度 2，位置 (-4,2,3)，冷色 0x8888ff，填充阴影区域
+- 轮廓光 (Rim Light/DirectionalLight): 强度 4，位置 (0,3,-5)，白色 0xffffff，突出模型轮廓
+- 顶部聚光灯 (SpotLight): 强度 2，位置 (0,3,0)，角度 30°，暖色 0xfff5e6，增强顶部亮度
+
+**材质调整**：roughness=0.19, metalness=0.08，实现细腻的哑光金属感
+
 **代码位置**：`public/index.html:36-43`，JavaScript 渲染逻辑
 
 ---
