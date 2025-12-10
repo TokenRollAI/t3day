@@ -1,243 +1,245 @@
-# The Daily Artefact - 每日一物 3D 纪念碑
+# The Daily Artefact
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-orange.svg)](https://workers.cloudflare.com/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
-An automated "Daily Artefact" 3D monument application that selects an interesting event from global news each day and generates a witty commentary with a 3D model to commemorate it.
+一个全自动的"每日一物"3D 纪念碑应用，每天从全球新闻中精选一个有趣事件，生成戏谑解说词和三维模型来纪念它。
 
-🌐 **Live Demo**: [https://today.tokenroll.ai](https://today.tokenroll.ai) - Experience the application online
+**[中文](README_CN.md) | [English](README_EN.md)**
 
-## ✨ Features
+🌐 **在线体验**：[https://today.tokenroll.ai](https://today.tokenroll.ai)
 
-- **Fully Automated**: Daily content generation without human intervention
-- **AI-Powered**: Uses GPT to create witty commentary and 3D model prompts from news
-- **Two-Step Generation**: Image → Model workflow for higher success rates and quality
-- **Task Recovery**: Resumable generation process from any interruption point
-- **Multi-language Support**: Frontend automatically displays in Chinese or English based on browser language
-- **3D Visualization**: Interactive 3D models with Three.js rendering
-- **URL Routing**: Share specific dates with `/YYYY-MM-DD` format
-- **Zero Server**: Completely built on Cloudflare's global distributed infrastructure
+## ✨ 特性
 
-## 🏗️ Architecture
+- **完全自动化**：每日内容生成，无需人工干预
+- **AI 驱动**：使用 GPT 从新闻中创建戏谑解说词和 3D 模型提示词
+- **两步生成**：图片 → 模型工作流程，提高成功率和质量
+- **任务恢复**：可从中断点恢复生成过程
+- **多语言支持**：前端根据浏览器语言自动显示中文或英文
+- **3D 可视化**：使用 Three.js 渲染的交互式 3D 模型
+- **URL 路由**：支持`/YYYY-MM-DD`格式分享特定日期
+- **零服务器**：完全基于 Cloudflare 全球分布式基础设施
 
-The Daily Artefact is a fully automated content generation pipeline running on Cloudflare Workers serverless platform. The system automatically:
+## 🏗️ 架构
 
-1. **Collects**: Uses Tavily API to search daily global news and filter interesting events
-2. **Creates**: Calls GPT to generate:
-   - Witty commentary (Chinese, 2-3 sentences, like chatting with friends)
-   - Virtual "object" representing the event
-   - 3D generation prompt for the object (English)
-   - Geographic coordinates and location information
-3. **Models** (Two-step workflow):
-   - **Step 1**: Uses Tripo Nano Banana for fast intermediate image generation
-   - **Step 2**: Uses generated image with Tripo 3D API to create high-quality GLB 3D models
-   - **Task Recovery**: If process is interrupted, can resume from `/api/resume/:date`
-4. **Stores**: Uploads models to Cloudflare R2, records metadata to D1 SQLite database
-5. **Displays**: Frontend renders 3D models in real-time using Three.js with new layout and interactive experience
+The Daily Artefact 是一个完全自动化的内容生成管道，运行在 Cloudflare Workers 无服务器平台上。系统每天自动：
 
-The entire process is fully automated, triggered daily at UTC 00:00 (Beijing Time 08:00) via Cloudflare Cron Triggers. Users can access the latest generated models and content in real-time.
+1. **搜集**：使用 Tavily API 搜索当日全球新闻，筛选有趣的事件
+2. **创作**：调用 GPT 生成：
+   - 事件的戏谑解说词（中文，2-3 句话，像朋友聊天）
+   - 代表事件的虚拟"物件"
+   - 该物件的 3D 生成提示词（英文）
+   - 地理坐标和位置信息
+3. **建模**（两步流程）：
+   - **Step 1**：使用 Tripo Nano Banana 快速生成中间图片
+   - **Step 2**：使用生成的图片调用 Tripo 3D API 生成高质量 GLB 3D 模型
+   - **任务恢复**：如果流程中断，可通过`/api/resume/:date`从中断处继续
+4. **存储**：将模型上传到 Cloudflare R2，记录元数据到 D1 SQLite 数据库
+5. **展示**：前端通过 Three.js 实时渲染 3D 模型，配合新布局和交互体验
 
-## 🚀 Quick Start
+整个流程完全自动化，通过 Cloudflare Cron Triggers 每天 UTC 00:00（北京时间 08:00）自动执行。用户访问页面时，实时获取最新生成的模型和内容。
 
-### Prerequisites
+## 🚀 快速开始
+
+### 前置要求
 
 - Node.js 18+
-- Cloudflare account
-- API keys for OpenAI, Tavily, and Tripo
+- Cloudflare 账户
+- OpenAI、Tavily 和 Tripo 的 API 密钥
 
-### Installation
+### 安装
 
-1. Clone this repository:
+1. 克隆此仓库：
 
 ```bash
 git clone https://github.com/yourusername/today-3d.git
 cd today-3d
 ```
 
-2. Install dependencies:
+2. 安装依赖：
 
 ```bash
 npm install
 ```
 
-3. Login to Cloudflare:
+3. 登录 Cloudflare：
 
 ```bash
 npx wrangler login
 ```
 
-4. Create D1 database:
+4. 创建 D1 数据库：
 
 ```bash
 npx wrangler d1 create today-3d-db
 ```
 
-5. Update `wrangler.toml` with your database ID:
+5. 使用你的数据库 ID 更新`wrangler.toml`：
 
 ```toml
 [[d1_databases]]
 binding = "DB"
 database_name = "today-3d-db"
-database_id = "your-database-id"  # Replace this
+database_id = "你的-database-id"  # 替换这里
 ```
 
-6. Create R2 storage bucket:
+6. 创建 R2 存储桶：
 
 ```bash
 npx wrangler r2 bucket create today-3d-models
 ```
 
-7. Set up environment variables:
+7. 设置环境变量：
 
 ```bash
-# Create .dev.vars for local development
+# 为本地开发创建.dev.vars
 cp .dev.vars.example .dev.vars
-# Edit .dev.vars with your actual API keys
+# 编辑.dev.vars填入真实的API密钥
 
-# Set production secrets
+# 设置生产环境密钥
 npx wrangler secret put OPENAI_API_KEY
 npx wrangler secret put TAVILY_API_KEY
 npx wrangler secret put TRIPO_API_KEY
 ```
 
-8. Run database migrations:
+8. 运行数据库迁移：
 
 ```bash
-# Local
+# 本地
 npm run db:migrate
 
-# Production
+# 生产环境
 npm run db:migrate:prod
 ```
 
-### Development
+### 开发
 
-Start the development server:
+启动开发服务器：
 
 ```bash
 npm run dev
 ```
 
-Visit http://localhost:8787 to see the application.
+访问 http://localhost:8787 查看应用。
 
-### Deployment
+### 部署
 
-Deploy to production:
+部署到生产环境：
 
 ```bash
 npm run deploy
 ```
 
-## 📡 API Endpoints
+## 📡 API 端点
 
-| Endpoint                | Method | Description                                 |
-| ----------------------- | ------ | ------------------------------------------- |
-| `/api/health`           | GET    | Health check                                |
-| `/api/today`            | GET    | Get today's/latest model data               |
-| `/api/date/:date`       | GET    | Get model data for specific date            |
-| `/api/date/:date/prev`  | GET    | Get previous day's model                    |
-| `/api/date/:date/next`  | GET    | Get next day's model                        |
-| `/api/dates`            | GET    | Get all available dates                     |
-| `/api/model/:key`       | GET    | Get GLB model file from R2                  |
-| `/api/generate`         | POST   | Manually trigger generation (requires auth) |
-| `/api/generate/:date`   | POST   | Generate for specific date (requires auth)  |
-| `/api/regenerate/:date` | POST   | Force regenerate for date (requires auth)   |
-| `/api/resume/:date`     | POST   | Resume interrupted task (requires auth)     |
-| `/api/translate/:date`  | POST   | Translate record for date (requires auth)   |
-| `/api/translate-all`    | POST   | Batch translate all records (requires auth) |
+| 端点                    | 方法 | 描述                             |
+| ----------------------- | ---- | -------------------------------- |
+| `/api/health`           | GET  | 健康检查                         |
+| `/api/today`            | GET  | 获取今日/最新模型数据            |
+| `/api/date/:date`       | GET  | 获取指定日期的模型数据           |
+| `/api/date/:date/prev`  | GET  | 获取前一天的模型                 |
+| `/api/date/:date/next`  | GET  | 获取后一天的模型                 |
+| `/api/dates`            | GET  | 获取所有可用日期                 |
+| `/api/model/:key`       | GET  | 从 R2 获取 GLB 模型文件          |
+| `/api/generate`         | POST | 手动触发生成（需要认证）         |
+| `/api/generate/:date`   | POST | 为指定日期生成（需要认证）       |
+| `/api/regenerate/:date` | POST | 强制重新生成指定日期（需要认证） |
+| `/api/resume/:date`     | POST | 恢复中断的任务（需要认证）       |
+| `/api/translate/:date`  | POST | 翻译指定日期的记录（需要认证）   |
+| `/api/translate-all`    | POST | 批量翻译所有记录（需要认证）     |
 
-## 🛠️ Tech Stack
+## 🛠️ 技术栈
 
-- **Backend**: Cloudflare Workers + Hono framework (TypeScript)
-- **Database**: Cloudflare D1 (SQLite)
-- **Storage**: Cloudflare R2
-- **Frontend**: Vanilla JavaScript + Three.js + OrbitControls + GLTFLoader
-- **External APIs**:
-  - Tavily API (news search)
-  - OpenAI API (content generation)
-  - Tripo 3D API (image and model generation)
-- **Analytics**: Umami for user behavior tracking
+- **后端**：Cloudflare Workers + Hono 框架（TypeScript）
+- **数据库**：Cloudflare D1（SQLite）
+- **存储**：Cloudflare R2
+- **前端**：原生 JavaScript + Three.js + OrbitControls + GLTFLoader
+- **外部 API**：
+  - Tavily API（新闻搜索）
+  - OpenAI API（内容生成）
+  - Tripo 3D API（图片和模型生成）
+- **分析**：Umami 用户行为追踪
 
-## 📁 Project Structure
+## 📁 项目结构
 
 ```
 today-3d/
 ├── src/
-│   ├── index.ts          # Main entry, Hono application
-│   ├── types.ts          # TypeScript type definitions
+│   ├── index.ts          # 主入口，Hono应用
+│   ├── types.ts          # TypeScript类型定义
 │   └── services/
-│       ├── tavily.ts     # Tavily search API
-│       ├── openai.ts     # GPT content generation
-│       ├── tripo.ts      # Tripo 3D model generation
-│       ├── storage.ts    # D1 + R2 storage operations
-│       └── translate.ts  # Translation service
+│       ├── tavily.ts     # Tavily搜索API
+│       ├── openai.ts     # GPT内容生成
+│       ├── tripo.ts      # Tripo 3D模型生成
+│       ├── storage.ts    # D1 + R2存储操作
+│       └── translate.ts  # 翻译服务
 ├── migrations/
-│   ├── 0001_init.sql     # Database initialization
+│   ├── 0001_init.sql     # 数据库初始化
 │   ├── 0002_add_task_id.sql
 │   └── 0002_add_translations.sql
 ├── public/
-│   └── index.html        # Frontend application
-├── scripts/              # Utility scripts
-├── llmdoc/              # Project documentation
-├── wrangler.toml        # Cloudflare configuration
+│   └── index.html        # 前端应用
+├── scripts/              # 实用脚本
+├── llmdoc/              # 项目文档
+├── wrangler.toml        # Cloudflare配置
 └── package.json
 ```
 
-## 🌍 Internationalization
+## 🌍 国际化
 
-The frontend supports multiple languages and automatically detects the user's browser language:
+前端支持多种语言，并自动检测用户的浏览器语言：
 
-- Chinese (zh) - Default
-- English (en)
-- Japanese (ja)
-- Korean (ko)
-- Spanish (es)
-- Russian (ru)
-- Portuguese (pt)
+- 中文（zh）- 默认
+- 英文（en）
+- 日文（ja）
+- 韩文（ko）
+- 西班牙文（es）
+- 俄文（ru）
+- 葡萄牙文（pt）
 
-Content is originally generated in Chinese and automatically translated to other languages using OpenAI API.
+内容最初以中文生成，并使用 OpenAI API 自动翻译成其他语言。
 
-## 💰 Cost Estimation (Monthly)
+## 💰 费用估算（月度）
 
-| Service | Free Tier           | Estimated Usage |
-| ------- | ------------------- | --------------- |
-| Workers | 100K requests/day   | ✅ Free         |
-| D1      | 5GB storage         | ✅ Free         |
-| R2      | 10GB storage        | ✅ Free         |
-| OpenAI  | -                   | ~$1-3           |
-| Tavily  | 1000 requests/month | ✅ Free         |
-| Tripo   | Pay-per-use         | ~$5-10          |
+| 服务    | 免费额度     | 预计使用 |
+| ------- | ------------ | -------- |
+| Workers | 10 万请求/天 | ✅ 免费  |
+| D1      | 5GB 存储     | ✅ 免费  |
+| R2      | 10GB 存储    | ✅ 免费  |
+| OpenAI  | -            | ~$1-3    |
+| Tavily  | 1000 次/月   | ✅ 免费  |
+| Tripo   | 按量计费     | ~$5-10   |
 
-**Total: ~$10-15/month** (mainly 3D generation costs)
+**总计：约$10-15/月**（主要是 3D 生成费用）
 
-## 🤝 Contributing
+## 🤝 贡献
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+欢迎贡献！请随时提交 Pull Request。
 
-1. Fork the project
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+1. Fork 此项目
+2. 创建你的功能分支（`git checkout -b feature/AmazingFeature`）
+3. 提交你的更改（`git commit -m 'Add some AmazingFeature'`）
+4. 推送到分支（`git push origin feature/AmazingFeature`）
+5. 打开 Pull Request
 
-## 📄 License
+## 📄 许可证
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+此项目采用 MIT 许可证 - 查看[LICENSE](LICENSE)文件了解详情。
 
-## 🙏 Acknowledgments
+## 🙏 致谢
 
-- [Tripo](https://tripo3d.ai/) - 3D model generation API
-- [Cloudflare](https://www.cloudflare.com/) - Serverless platform and services
-- [Three.js](https://threejs.org/) - 3D graphics library
-- [Hono](https://hono.dev/) - Web framework
-- [Tavily](https://tavily.com/) - Search API
-- [OpenAI](https://openai.com/) - AI content generation
+- [Tripo](https://tripo3d.ai/) - 3D 模型生成 API
+- [Cloudflare](https://www.cloudflare.com/) - 无服务器平台和服务
+- [Three.js](https://threejs.org/) - 3D 图形库
+- [Hono](https://hono.dev/) - Web 框架
+- [Tavily](https://tavily.com/) - 搜索 API
+- [OpenAI](https://openai.com/) - AI 内容生成
 
-## 📞 Contact
+## 📞 联系
 
-If you have any questions or suggestions, feel free to open an issue or contact the project maintainers.
+如果您有任何问题或建议，请随时提出 issue 或联系项目维护者。
 
 ---
 
-**Built with ❤️ and AI**
+**用 ❤️ 和 AI 构建**
