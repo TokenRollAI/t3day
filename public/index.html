@@ -188,7 +188,7 @@
       pointer-events: none;
       opacity: 0;
       transition: opacity 1s ease;
-      text-align: right;
+      text-align: left;
     }
 
     #right-panel.visible {
@@ -416,7 +416,7 @@
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
     import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-    // 国际化
+    // 国际化 - 支持多语言
     const i18n = {
       zh: {
         months: ['一月', '二月', '三月', '四月', '五月', '六月',
@@ -433,17 +433,66 @@
         noContent: 'No Content',
         generating: 'Today\'s artefact is being generated...',
         source: 'Source'
+      },
+      ja: {
+        months: ['1月', '2月', '3月', '4月', '5月', '6月',
+                 '7月', '8月', '9月', '10月', '11月', '12月'],
+        loading: '読み込み中',
+        noContent: 'コンテンツなし',
+        generating: '本日のアーティファクトを生成中...',
+        source: 'ソース'
+      },
+      ko: {
+        months: ['1월', '2월', '3월', '4월', '5월', '6월',
+                 '7월', '8월', '9월', '10월', '11월', '12월'],
+        loading: '로딩 중',
+        noContent: '콘텐츠 없음',
+        generating: '오늘의 아티팩트 생성 중...',
+        source: '출처'
+      },
+      es: {
+        months: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+                 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'],
+        loading: 'Cargando',
+        noContent: 'Sin contenido',
+        generating: 'El artefacto de hoy se está generando...',
+        source: 'Fuente'
+      },
+      ru: {
+        months: ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+                 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'],
+        loading: 'Загрузка',
+        noContent: 'Нет контента',
+        generating: 'Артефакт дня создается...',
+        source: 'Источник'
+      },
+      pt: {
+        months: ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'],
+        loading: 'Carregando',
+        noContent: 'Sem conteúdo',
+        generating: 'O artefato de hoje está sendo gerado...',
+        source: 'Fonte'
       }
     };
+
+    // 支持的语言列表
+    const SUPPORTED_LANGS = ['zh', 'en', 'ja', 'ko', 'es', 'ru', 'pt'];
 
     // 检测语言
     function detectLanguage() {
       const lang = navigator.language || navigator.userLanguage;
-      return lang.startsWith('zh') ? 'zh' : 'en';
+      const shortLang = lang.split('-')[0].toLowerCase();
+      // 中文特殊处理
+      if (lang.startsWith('zh')) return 'zh';
+      // 检查是否是支持的语言
+      if (SUPPORTED_LANGS.includes(shortLang)) return shortLang;
+      // 默认英语
+      return 'en';
     }
 
-    const currentLang = detectLanguage();
-    const t = i18n[currentLang];
+    let currentLang = detectLanguage();
+    let t = i18n[currentLang];
 
     // 更新静态文本
     document.querySelector('.loader-text').textContent = t.loading;
@@ -522,29 +571,29 @@
     });
 
     // 灯光 - 三点布光 + 顶部聚光灯
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.05);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
     scene.add(ambientLight);
 
     // 主光 (Key Light) - 右前方 45°，暖色
-    const keyLight = new THREE.DirectionalLight(0xffeedd, 2);
+    const keyLight = new THREE.DirectionalLight(0xffeedd, 1);
     keyLight.position.set(4, 4, 4);
     scene.add(keyLight);
 
     // 补光 (Fill Light) - 左前方，冷色
-    const fillLight = new THREE.DirectionalLight(0x8888ff, 2);
+    const fillLight = new THREE.DirectionalLight(0x8888ff, 1);
     fillLight.position.set(-4, 2, 3);
     scene.add(fillLight);
 
     // 轮廓光 (Rim Light) - 后方，勾勒边缘
-    const rimLight = new THREE.DirectionalLight(0xffffff, 4);
+    const rimLight = new THREE.DirectionalLight(0xffffff, 1);
     rimLight.position.set(0, 3, -5);
     scene.add(rimLight);
 
     // 博物馆顶部聚光灯
-    const spotLight = new THREE.SpotLight(0xfff5e6, 2);
-    spotLight.position.set(0, 3, 0);
+    const spotLight = new THREE.SpotLight(0xfff5e6, 3);
+    spotLight.position.set(0, 7, 0);
     spotLight.target.position.set(0, 0, 0);
-    spotLight.angle = Math.PI / 6;  // 30°
+    spotLight.angle = (28 * Math.PI) / 180;  // 28°
     spotLight.penumbra = 0.5;
     spotLight.decay = 0;
     spotLight.distance = 0;
@@ -576,8 +625,8 @@
                 const materials = Array.isArray(child.material) ? child.material : [child.material];
                 materials.forEach((mat) => {
                   if (mat.isMeshStandardMaterial || mat.isMeshPhysicalMaterial) {
-                    mat.roughness = 0.19;
-                    mat.metalness = 0.08;
+                    mat.roughness = 0;
+                    mat.metalness = 0;
                     mat.needsUpdate = true;
                   }
                 });
@@ -666,6 +715,41 @@
       nextBtn.disabled = !data.has_next;
     }
 
+    // 获取翻译后的内容
+    function getLocalizedContent(data) {
+      // 中文是原始语言，直接返回原始数据
+      if (currentLang === 'zh') {
+        return {
+          title: data.title,
+          description: data.description,
+          location_name: data.location_name,
+          source_event: data.source_event,
+        };
+      }
+
+      // 尝试从 translations 获取翻译
+      if (data.translations) {
+        try {
+          const translations = typeof data.translations === 'string'
+            ? JSON.parse(data.translations)
+            : data.translations;
+          if (translations[currentLang]) {
+            return translations[currentLang];
+          }
+        } catch (e) {
+          console.error('Failed to parse translations:', e);
+        }
+      }
+
+      // 如果没有翻译，回退到原始内容
+      return {
+        title: data.title,
+        description: data.description,
+        location_name: data.location_name,
+        source_event: data.source_event,
+      };
+    }
+
     // 显示数据
     async function displayData(data, animate = true) {
       currentData = data;
@@ -689,17 +773,20 @@
       // 隐藏加载状态
       loader.classList.add('hidden');
 
+      // 获取本地化内容
+      const localizedContent = getLocalizedContent(data);
+
       // 更新左侧面板
       const dateParts = formatDateParts(data.date);
       document.getElementById('year').textContent = dateParts.year;
       document.getElementById('date').textContent = dateParts.day;
       document.getElementById('month').textContent = dateParts.month;
       document.getElementById('coordinates').textContent = formatCoordinates(data.latitude, data.longitude);
-      document.getElementById('location').textContent = data.location_name;
+      document.getElementById('location').textContent = localizedContent.location_name;
 
       // 更新右侧面板
-      document.getElementById('title').textContent = data.title;
-      document.getElementById('source-event').textContent = data.source_event;
+      document.getElementById('title').textContent = localizedContent.title;
+      document.getElementById('source-event').textContent = localizedContent.source_event;
 
       // 更新导航按钮
       updateNavButtons(data);
@@ -712,9 +799,9 @@
 
       // 打字机效果
       if (animate) {
-        await typeWriter(document.getElementById('description'), data.description);
+        await typeWriter(document.getElementById('description'), localizedContent.description);
       } else {
-        document.getElementById('description').textContent = data.description;
+        document.getElementById('description').textContent = localizedContent.description;
       }
     }
 

@@ -1,4 +1,12 @@
 import type { DailyModel } from '../types';
+import {
+  getFromCache,
+  setCache,
+  CacheKeys,
+  DEFAULT_TTL,
+  invalidateOnRecordComplete,
+  invalidateOnTranslationUpdate,
+} from './cache';
 
 /**
  * 上传 GLB 模型到 R2
@@ -80,7 +88,7 @@ export async function createPendingRecord(
 }
 
 /**
- * 更新记录为完成状态
+ * 更新记录为完成状态（并清除相关缓存）
  */
 export async function completeRecord(
   db: D1Database,
@@ -100,6 +108,9 @@ export async function completeRecord(
   if (!result) {
     throw new Error('Failed to complete record');
   }
+
+  // 清除相关缓存
+  invalidateOnRecordComplete(date);
 
   return result;
 }
@@ -126,43 +137,107 @@ export async function getTodayRecord(db: D1Database): Promise<DailyModel | null>
 }
 
 /**
- * 按日期获取记录
+ * 按日期获取记录（带缓存）
  */
 export async function getRecordByDate(db: D1Database, date: string): Promise<DailyModel | null> {
-  return db
+  const cacheKey = CacheKeys.recordByDate(date);
+
+  // 尝试从缓存获取
+  const cached = getFromCache<DailyModel>(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  // 缓存未命中，查询数据库
+  const record = await db
     .prepare('SELECT * FROM daily_models WHERE date = ?')
     .bind(date)
     .first<DailyModel>();
+
+  // 只缓存已完成的记录
+  if (record && record.status === 'completed') {
+    setCache(cacheKey, record, DEFAULT_TTL.RECORD_BY_DATE);
+  }
+
+  return record;
 }
 
 /**
- * 获取最新记录（用于前端展示）
+ * 获取最新记录（带缓存，用于前端展示）
  */
 export async function getLatestRecord(db: D1Database): Promise<DailyModel | null> {
-  return db
+  const cacheKey = CacheKeys.LATEST_RECORD;
+
+  // 尝试从缓存获取
+  const cached = getFromCache<DailyModel>(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  // 缓存未命中，查询数据库
+  const record = await db
     .prepare('SELECT * FROM daily_models WHERE status = ? ORDER BY date DESC LIMIT 1')
     .bind('completed')
     .first<DailyModel>();
+
+  // 写入缓存
+  if (record) {
+    setCache(cacheKey, record, DEFAULT_TTL.LATEST_RECORD);
+  }
+
+  return record;
 }
 
 /**
- * 获取前一天有内容的记录
+ * 获取前一天有内容的记录（带缓存）
  */
 export async function getPrevRecord(db: D1Database, currentDate: string): Promise<DailyModel | null> {
-  return db
+  const cacheKey = CacheKeys.prevRecord(currentDate);
+
+  // 尝试从缓存获取
+  const cached = getFromCache<DailyModel>(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  // 缓存未命中，查询数据库
+  const record = await db
     .prepare('SELECT * FROM daily_models WHERE date < ? AND status = ? ORDER BY date DESC LIMIT 1')
     .bind(currentDate, 'completed')
     .first<DailyModel>();
+
+  // 写入缓存
+  if (record) {
+    setCache(cacheKey, record, DEFAULT_TTL.PREV_NEXT);
+  }
+
+  return record;
 }
 
 /**
- * 获取后一天有内容的记录
+ * 获取后一天有内容的记录（带缓存）
  */
 export async function getNextRecord(db: D1Database, currentDate: string): Promise<DailyModel | null> {
-  return db
+  const cacheKey = CacheKeys.nextRecord(currentDate);
+
+  // 尝试从缓存获取
+  const cached = getFromCache<DailyModel>(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  // 缓存未命中，查询数据库
+  const record = await db
     .prepare('SELECT * FROM daily_models WHERE date > ? AND status = ? ORDER BY date ASC LIMIT 1')
     .bind(currentDate, 'completed')
     .first<DailyModel>();
+
+  // 写入缓存
+  if (record) {
+    setCache(cacheKey, record, DEFAULT_TTL.PREV_NEXT);
+  }
+
+  return record;
 }
 
 /**
@@ -188,14 +263,28 @@ export async function hasTodayCompleted(db: D1Database): Promise<boolean> {
 }
 
 /**
- * 获取所有日期列表（用于日历展示）
+ * 获取所有日期列表（带缓存，用于日历展示）
  */
 export async function getAllDates(db: D1Database): Promise<string[]> {
+  const cacheKey = CacheKeys.ALL_DATES;
+
+  // 尝试从缓存获取
+  const cached = getFromCache<string[]>(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  // 缓存未命中，查询数据库
   const results = await db
     .prepare('SELECT date FROM daily_models WHERE status = ? ORDER BY date DESC')
     .bind('completed')
     .all<{ date: string }>();
-  return results.results.map(r => r.date);
+  const dates = results.results.map(r => r.date);
+
+  // 写入缓存
+  setCache(cacheKey, dates, DEFAULT_TTL.ALL_DATES);
+
+  return dates;
 }
 
 /**
@@ -217,5 +306,38 @@ export async function getRecentRecords(
     )
     .bind(beforeDate, days)
     .all<{ date: string; title: string; source_event: string }>();
+  return results.results;
+}
+
+/**
+ * 更新记录的翻译（并清除相关缓存）
+ */
+export async function updateTranslations(
+  db: D1Database,
+  date: string,
+  translations: string
+): Promise<void> {
+  await db
+    .prepare('UPDATE daily_models SET translations = ? WHERE date = ?')
+    .bind(translations, date)
+    .run();
+
+  // 清除相关缓存
+  invalidateOnTranslationUpdate(date);
+}
+
+/**
+ * 获取所有缺少翻译的已完成记录
+ */
+export async function getRecordsWithoutTranslations(
+  db: D1Database
+): Promise<DailyModel[]> {
+  const results = await db
+    .prepare(
+      `SELECT * FROM daily_models
+       WHERE status = 'completed' AND (translations IS NULL OR translations = '')
+       ORDER BY date DESC`
+    )
+    .all<DailyModel>();
   return results.results;
 }

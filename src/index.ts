@@ -24,7 +24,10 @@ import {
   hasTodayCompleted,
   getAllDates,
   getRecentRecords,
+  updateTranslations,
+  getRecordsWithoutTranslations,
 } from './services/storage';
+import { translateContent } from './services/translate';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -255,6 +258,83 @@ app.post('/api/resume/:date', async (c) => {
   }
 });
 
+// 重新翻译指定日期的记录
+app.post('/api/translate/:date', async (c) => {
+  const authHeader = c.req.header('Authorization');
+  if (authHeader !== `Bearer ${c.env.TRIPO_API_KEY}`) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  const date = c.req.param('date');
+
+  try {
+    const record = await getRecordByDate(c.env.DB, date);
+    if (!record) {
+      return c.json({ error: 'Record not found' }, 404);
+    }
+
+    console.log(`Translating record for ${date}...`);
+    const translations = await translateContent(
+      c.env.OPENAI_API_KEY,
+      c.env.OPENAI_BASE_URL,
+      {
+        title: record.title,
+        description: record.description,
+        location_name: record.location_name,
+        source_event: record.source_event,
+      }
+    );
+
+    await updateTranslations(c.env.DB, date, JSON.stringify(translations));
+    console.log(`Translation complete for ${date}`);
+
+    return c.json({ success: true, translations });
+  } catch (error) {
+    console.error('Translation error:', error);
+    return c.json({ error: String(error) }, 500);
+  }
+});
+
+// 批量翻译所有缺少翻译的记录
+app.post('/api/translate-all', async (c) => {
+  const authHeader = c.req.header('Authorization');
+  if (authHeader !== `Bearer ${c.env.TRIPO_API_KEY}`) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+
+  try {
+    const records = await getRecordsWithoutTranslations(c.env.DB);
+    console.log(`Found ${records.length} records without translations`);
+
+    const results: { date: string; success: boolean; error?: string }[] = [];
+
+    for (const record of records) {
+      try {
+        console.log(`Translating ${record.date}...`);
+        const translations = await translateContent(
+          c.env.OPENAI_API_KEY,
+          c.env.OPENAI_BASE_URL,
+          {
+            title: record.title,
+            description: record.description,
+            location_name: record.location_name,
+            source_event: record.source_event,
+          }
+        );
+        await updateTranslations(c.env.DB, record.date, JSON.stringify(translations));
+        results.push({ date: record.date, success: true });
+      } catch (err) {
+        results.push({ date: record.date, success: false, error: String(err) });
+      }
+    }
+
+    return c.json({ total: records.length, results });
+  } catch (error) {
+    console.error('Batch translation error:', error);
+    return c.json({ error: String(error) }, 500);
+  }
+});
+
 // 更新任务状态到数据库
 async function updateTaskState(db: D1Database, date: string, state: TaskState): Promise<void> {
   await db
@@ -411,7 +491,23 @@ async function generateDailyArtefact(env: Env, targetDate?: string): Promise<Dai
   const imageTaskId = await createImageTask(env.TRIPO_API_KEY, content.model_prompt);
   console.log(`Image task created: ${imageTaskId}`);
 
-  // 7. 保存待处理记录（图片阶段）
+  // 7. 并行执行：保存记录 + 开始翻译
+  console.log('Starting translation in parallel...');
+  const translationPromise = translateContent(
+    env.OPENAI_API_KEY,
+    env.OPENAI_BASE_URL,
+    {
+      title: content.title,
+      description: content.description,
+      location_name: content.location_name,
+      source_event: content.source_event,
+    }
+  ).catch((err) => {
+    console.error('Translation failed (non-blocking):', err);
+    return null;
+  });
+
+  // 8. 保存待处理记录（图片阶段）
   const taskState: TaskState = {
     stage: 'image',
     imageTaskId,
@@ -428,13 +524,13 @@ async function generateDailyArtefact(env: Env, targetDate?: string): Promise<Dai
     tripo_task_id: JSON.stringify(taskState),
   });
 
-  // 8. 等待图片生成
+  // 9. 等待图片生成
   console.log('Waiting for image generation...');
   try {
     const imageUrl = await waitForImage(env.TRIPO_API_KEY, imageTaskId);
     console.log(`Image generated: ${imageUrl}`);
 
-    // 9. 创建模型生成任务 (Step 2: image to model)
+    // 10. 创建模型生成任务 (Step 2: image to model)
     console.log('Creating image-to-model task...');
     const modelTaskId = await createImageToModelTask(env.TRIPO_API_KEY, imageUrl);
     console.log(`Model task created: ${modelTaskId}`);
@@ -448,11 +544,20 @@ async function generateDailyArtefact(env: Env, targetDate?: string): Promise<Dai
     };
     await updateTaskState(env.DB, date, newState);
 
-    // 10. 等待模型生成
+    // 11. 等待模型生成 + 等待翻译完成
     console.log('Waiting for model generation...');
-    const modelUrl = await waitForModel(env.TRIPO_API_KEY, modelTaskId);
+    const [modelUrl, translations] = await Promise.all([
+      waitForModel(env.TRIPO_API_KEY, modelTaskId),
+      translationPromise,
+    ]);
 
-    // 11. 完成生成
+    // 12. 保存翻译结果
+    if (translations) {
+      console.log('Saving translations...');
+      await updateTranslations(env.DB, date, JSON.stringify(translations));
+    }
+
+    // 13. 完成生成
     return finishGeneration(env, date, modelUrl);
   } catch (error) {
     await failRecord(env.DB, date);

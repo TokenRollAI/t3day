@@ -121,19 +121,39 @@ const lang = navigator.language || navigator.languages?.[0] || 'en';
 const isZh = lang.startsWith('zh');
 ```
 
+### 支持的语言
+
+- 中文 (zh): 原始内容语言，始终有翻译内容
+- 英文 (en): 自动翻译
+- 日文 (ja): 自动翻译
+- 韩文 (ko): 自动翻译
+- 西班牙文 (es): 自动翻译
+- 俄文 (ru): 自动翻译
+- 葡萄牙文 (pt): 自动翻译
+
+### 翻译优先级
+
+前端优先显示对应语言的翻译内容，无翻译时回退到中文原文：
+
+```javascript
+// 伪代码逻辑
+const displayText = translations?.[language]?.field || originalChineseContent;
+```
+
 ### 翻译字符串
 
-关键翻译字符串分布在代码中：
+关键翻译字符串分布在代码和 translations 字段中：
 
-| 英文 | 中文 | 位置 |
+| 字段 | 位置 | 说明 |
 |------|------|------|
-| January | 1月 | public/index.html JavaScript |
-| February | 2月 | 同上 |
-| ... | ... | 同上 |
-| Location | 位置 | 同上 |
-| Source | 来源 | 同上 |
-| Year | 年份 | 同上 |
-| Month | 月份 | 同上 |
+| title | translations 或原始 title | 事件标题 |
+| description | translations 或原始 description | 事件描述（由 translations 字段提供多语言版本） |
+| location_name | translations 或原始 location_name | 地点名称（由 translations 字段提供多语言版本） |
+| source_event | translations 或原始 source_event | 新闻来源（由 translations 字段提供多语言版本） |
+| Month | public/index.html JavaScript | 月份名称 |
+| Location | public/index.html JavaScript | "位置" 标签 |
+| Source | public/index.html JavaScript | "来源" 标签 |
+| Year | public/index.html JavaScript | "年份" 标签 |
 
 ### 月份本地化
 
@@ -148,10 +168,10 @@ const month = monthNames[isZh ? 'zh' : 'en'][date.getMonth()];
 ### 坐标格式本地化
 
 ```javascript
-// 英文
+// 方向指示符（当前仅支持英文）
 const latDir = latitude > 0 ? 'N' : 'S';
 const lonDir = longitude > 0 ? 'E' : 'W';
-// 如果需要中文，可扩展为 '北', '南', '东', '西'
+// 可扩展为中文：'北', '南', '东', '西'
 ```
 
 ---

@@ -27,6 +27,7 @@ export interface DailyModel {
   model_url: string;      // R2 中的 GLB 文件 URL
   model_prompt: string;   // 生成模型用的 prompt
   source_event: string;   // 原始新闻事件摘要
+  translations?: string;  // 多语言翻译 JSON
   tripo_task_id?: string; // Tripo 任务 ID
   status: 'pending' | 'generating' | 'completed' | 'failed';
   created_at: string;

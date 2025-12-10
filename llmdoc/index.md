@@ -47,6 +47,26 @@ API 规范、数据结构、配置等详细信息。
 
 ## 最近更新（Dec 2025）
 
+### Worker 内存缓存功能
+- `src/services/cache.ts` 新增 Worker 内存缓存模块，在单个实例的多个请求间共享缓存
+- 缓存覆盖所有读取函数：`getRecordByDate` (24h)、`getLatestRecord` (1h)、`getPrevRecord` (24h)、`getNextRecord` (24h)、`getAllDates` (1h)
+- 只缓存已完成（completed）的记录，避免缓存不稳定状态
+- `src/services/storage.ts` 集成缓存：读取操作自动检查缓存，写入操作自动清除相关缓存
+- 缓存失效策略：`completeRecord` 时清除 `latest_record`、`all_dates`、相邻日期的导航缓存；`updateTranslations` 时清除 `record:{date}` 和 `latest_record`
+- 设计优势：零额外成本（无需 KV 绑定）、高读性能（内存 > 网络）、适合读多写少场景（每天 1 条新记录，大量读取）
+
+### 多语言翻译功能（使用 OpenAI SDK）
+- `src/services/translate.ts` 使用 OpenAI SDK 调用 DeepSeek API 支持多语言翻译
+- 支持 6 个目标语言：英文、日文、韩文、西班牙文、俄文、葡萄牙文
+- 函数签名优化：`translateToLanguage(openai, content, targetLang)` - OpenAI 实例作为参数，避免重复创建
+- OpenAI 客户端在 `translateContent` 中创建一次，然后传递给各个 `translateToLanguage` 调用（更高效）
+- 错误处理依赖 OpenAI SDK 内置机制，而不是手动检查 `response.ok`
+- 翻译与 3D 模型生成并行执行，非阻塞（翻译失败不影响生成）
+- 新增 `translations` 列存储 JSON 格式的多语言翻译
+- 新增 `/api/translate/:date` 和 `/api/translate-all` API 端点
+- 前端自动检测浏览器语言，优先显示翻译内容，无翻译时回退到中文原文
+- 迁移脚本：`migrations/0002_add_translations.sql`
+
 ### 生成流程重构
 - 从单步 `text_to_model` 改为两步流程：图片生成（nano banana）→ 图片转模型
 - 任务状态以 JSON 格式保存在数据库，支持中断恢复
@@ -55,7 +75,7 @@ API 规范、数据结构、配置等详细信息。
 ### 前端增强
 - 支持日期 URL 路由（如 `/2025-12-08`），方便链接分享
 - 新布局：左侧时间信息 + 右侧描述，更清晰的视觉层次
-- 自动语言切换：根据浏览器语言显示中文或英文
+- 自动语言切换：根据浏览器语言显示中文或对应语言的翻译
 - 完整的 SPA 支持，通过 wrangler assets binding 实现路由
 
 ### 基础设施

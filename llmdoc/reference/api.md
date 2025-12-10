@@ -225,7 +225,95 @@ Authorization: Bearer <TRIPO_API_KEY>
 }
 ```
 
-### 11. 健康检查 GET /api/health
+### 11. 重新翻译指定日期的记录 POST /api/translate/:date
+
+翻译指定日期记录的 title、description、location_name、source_event 字段到 6 个目标语言。需要 Bearer Token 认证。
+
+**请求**
+```
+POST /api/translate/2025-12-08
+Authorization: Bearer <TRIPO_API_KEY>
+```
+
+**响应 (200 OK)**
+```json
+{
+  "success": true,
+  "translations": {
+    "en": {
+      "title": "Something Happened",
+      "description": "A funny story about an event...",
+      "location_name": "New York, USA",
+      "source_event": "News event summary in English"
+    },
+    "ja": {
+      "title": "何かが起こった",
+      "description": "イベントについての面白い話...",
+      "location_name": "ニューヨーク、アメリカ",
+      "source_event": "日本語のニュースイベント要約"
+    },
+    "ko": { ... },
+    "es": { ... },
+    "ru": { ... },
+    "pt": { ... }
+  }
+}
+```
+
+**错误响应 (404 Not Found)**
+```json
+{
+  "error": "Record not found"
+}
+```
+
+**错误响应 (500 Internal Server Error)**
+```json
+{
+  "error": "DeepSeek API error or translation failed"
+}
+```
+
+### 12. 批量翻译所有缺少翻译的记录 POST /api/translate-all
+
+找出所有 translations 列为 NULL 的记录，批量调用翻译 API。需要 Bearer Token 认证。
+
+**请求**
+```
+POST /api/translate-all
+Authorization: Bearer <TRIPO_API_KEY>
+```
+
+**响应 (200 OK)**
+```json
+{
+  "totalRecords": 3,
+  "results": [
+    {
+      "date": "2025-12-08",
+      "success": true
+    },
+    {
+      "date": "2025-12-07",
+      "success": true
+    },
+    {
+      "date": "2025-12-06",
+      "success": false,
+      "error": "API timeout"
+    }
+  ]
+}
+```
+
+**错误响应 (500 Internal Server Error)**
+```json
+{
+  "error": "Batch translation failed"
+}
+```
+
+### 13. 健康检查 GET /api/health
 
 检查 Worker 是否运行正常。
 
@@ -260,6 +348,7 @@ GET /api/health
 | model_url | string | API 代理路由，客户端请求此 URL 获取 GLB 文件 |
 | model_prompt | string | 用于生成 3D 模型的英文 prompt |
 | source_event | string | 原始新闻事件的一句话摘要 |
+| translations | string (JSON) | 多语言翻译，JSON 格式，支持 en, ja, ko, es, ru, pt |
 | tripo_task_id | string (JSON) | 任务状态（JSON 格式），支持任务恢复 |
 | status | string | 记录状态：'generating' 或 'completed' |
 | created_at | string (ISO 8601) | 记录创建时间戳 |
@@ -281,6 +370,51 @@ GET /api/health
   "imageTaskId": "task-id-xxx",
   "imageUrl": "https://...",
   "modelTaskId": "task-id-yyy"
+}
+```
+
+### Translations (translations 字段的 JSON 格式)
+
+多语言翻译结果，包含 6 个目标语言。任何语言的翻译失败都不会阻止整个生成流程。
+
+```json
+{
+  "en": {
+    "title": "Something Funny Happened",
+    "description": "An amusing story about the event...",
+    "location_name": "New York, USA",
+    "source_event": "News headline in English"
+  },
+  "ja": {
+    "title": "何か面白いことが起こった",
+    "description": "イベントについての面白い話...",
+    "location_name": "ニューヨーク、アメリカ",
+    "source_event": "日本語のニュースヘッドライン"
+  },
+  "ko": {
+    "title": "뭔가 재미있는 일이 일어났다",
+    "description": "이 사건에 대한 재미있는 이야기...",
+    "location_name": "뉴욕, 미국",
+    "source_event": "한국어 뉴스 헤드라인"
+  },
+  "es": {
+    "title": "Algo Divertido Sucedió",
+    "description": "Una historia divertida sobre el evento...",
+    "location_name": "Nueva York, Estados Unidos",
+    "source_event": "Titular de noticias en español"
+  },
+  "ru": {
+    "title": "Произошло что-то забавное",
+    "description": "Забавная история о событии...",
+    "location_name": "Нью-Йорк, США",
+    "source_event": "Заголовок новостей на русском"
+  },
+  "pt": {
+    "title": "Algo Engraçado Aconteceu",
+    "description": "Uma história engraçada sobre o evento...",
+    "location_name": "Nova York, EUA",
+    "source_event": "Manchete de notícias em português"
+  }
 }
 ```
 

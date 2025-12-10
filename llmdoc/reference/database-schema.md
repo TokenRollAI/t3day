@@ -24,13 +24,16 @@ The Daily Artefact 使用 Cloudflare D1 (SQLite) 存储每日生成的模型元�
 | model_url | TEXT | NOT NULL | 模型访问 URL (/api/model/...) |
 | model_prompt | TEXT | NOT NULL | 3D 模型生成 prompt（英文） |
 | source_event | TEXT | NOT NULL | 原始新闻事件摘要 |
+| translations | TEXT | NULL | 多语言翻译 JSON，支持 en, ja, ko, es, ru, pt |
+| tripo_task_id | TEXT | NULL | 任务状态 JSON（支持任务恢复） |
+| status | TEXT | DEFAULT 'completed' | 记录状态：'generating' 或 'completed' |
 | created_at | DATETIME | DEFAULT CURRENT_TIMESTAMP | 记录创建时间 |
 
 **示例数据**
 
 ```
-id | date       | title    | description           | latitude | longitude | location_name | model_url                      | created_at
-1  | 2025-12-08 | 某事件   | 事件的戏谑解说...      | 40.7128  | -74.0060  | 纽约，美国     | /api/model/models/2025-12-08.glb | 2025-12-08 08:00:00
+id | date       | title    | description           | latitude | longitude | location_name | model_url                      | translations                                          | created_at
+1  | 2025-12-08 | 某事件   | 事件的戏谑解说...      | 40.7128  | -74.0060  | 纽约，美国     | /api/model/models/2025-12-08.glb | {"en":{...},"ja":{...},...}                           | 2025-12-08 08:00:00
 ```
 
 ## 索引
@@ -72,7 +75,18 @@ SELECT COUNT(*) as total FROM daily_models;
 
 ## 迁移脚本
 
-初始化脚本位于 `migrations/0001_init.sql`，在部署时通过 Wrangler 执行：
+### 0001_init.sql
+
+初始化脚本位于 `migrations/0001_init.sql`，创建 daily_models 表和索引。
+
+### 0002_add_translations.sql
+
+添加多语言翻译支持，执行 SQL：
+```sql
+ALTER TABLE daily_models ADD COLUMN translations TEXT;
+```
+
+在部署时通过 Wrangler 执行所有迁移脚本：
 
 ```bash
 npm run db:migrate       # 本地
